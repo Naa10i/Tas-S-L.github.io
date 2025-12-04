@@ -1,0 +1,157 @@
+<?php
+require_once 'config.php';
+require_once 'session.php';
+
+$conn = getConnection();
+
+// Filter kategori
+$kategori_filter = $_GET['kategori'] ?? '';
+
+// Query produk
+$query = "SELECT * FROM products";
+if ($kategori_filter) {
+    $query .= " WHERE kategori = ?";
+}
+$query .= " ORDER BY created_at DESC";
+
+$stmt = $conn->prepare($query);
+if ($kategori_filter) {
+    $stmt->bind_param("s", $kategori_filter);
+}
+$stmt->execute();
+$result = $stmt->get_result();
+
+// Ambil semua kategori
+$kategori_query = "SELECT DISTINCT kategori FROM products ORDER BY kategori";
+$kategori_result = $conn->query($kategori_query);
+$categories = [];
+while ($row = $kategori_result->fetch_assoc()) {
+    $categories[] = $row['kategori'];
+}
+
+// Hitung jumlah item di cart
+$session_id = getUserSessionId();
+$cart_query = "SELECT SUM(quantity) as total FROM cart WHERE session_id = ?";
+$cart_stmt = $conn->prepare($cart_query);
+$cart_stmt->bind_param("s", $session_id);
+$cart_stmt->execute();
+$cart_result = $cart_stmt->get_result();
+$cart_count = $cart_result->fetch_assoc()['total'] ?? 0;
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produk - S&L Bags</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>S&L Bags</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.php">Home</a></li>
+                <li><a href="products.php" class="active">Produk</a></li>
+                <li><a href="contact.php">Kontak</a></li>
+                <li><a href="cart.php" class="cart-link">
+                    🛒 Keranjang <span class="cart-badge"><?php echo $cart_count; ?></span>
+                </a></li>
+                <li><a href="login.php" class="admin-link">Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Products Section -->
+    <section class="products-section">
+        <div class="container">
+            <h2 class="section-title">Semua Produk</h2>
+            
+            <!-- Filter Kategori -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <a href="products.php" class="btn <?php echo !$kategori_filter ? 'btn-primary' : 'btn-secondary'; ?>" style="margin: 0.5rem;">Semua</a>
+                <?php foreach ($categories as $cat): ?>
+                <a href="products.php?kategori=<?php echo urlencode($cat); ?>" 
+                   class="btn <?php echo $kategori_filter === $cat ? 'btn-primary' : 'btn-secondary'; ?>" 
+                   style="margin: 0.5rem;">
+                    <?php echo htmlspecialchars($cat); ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Products Grid -->
+            <?php if ($result->num_rows > 0): ?>
+            <div class="products-grid">
+                <?php while ($product = $result->fetch_assoc()): ?>
+                <div class="product-card">
+                    <div class="product-image">
+                        <img src="uploads/<?php echo htmlspecialchars($product['gambar']); ?>" 
+                             alt="<?php echo htmlspecialchars($product['nama_produk']); ?>"
+                             onerror="this.src='https://via.placeholder.com/300x300?text=<?php echo urlencode($product['nama_produk']); ?>'">
+                    </div>
+                    <div class="product-info">
+                        <h3><?php echo htmlspecialchars($product['nama_produk']); ?></h3>
+                        <p class="product-price">Rp <?php echo number_format($product['harga'], 0, ',', '.'); ?></p>
+                        <p class="product-stock">Stok: <?php echo $product['stok']; ?></p>
+                        <div class="product-actions">
+                            <a href="product_detail.php?id=<?php echo $product['id']; ?>" class="btn btn-secondary">Detail</a>
+                            <?php if ($product['stok'] > 0): ?>
+                            <a href="add_to_cart.php?id=<?php echo $product['id']; ?>" class="btn btn-primary">Tambah ke Keranjang</a>
+                            <?php else: ?>
+                            <button class="btn btn-primary" disabled style="opacity: 0.5;">Stok Habis</button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endwhile; ?>
+            </div>
+            <?php else: ?>
+            <div class="empty-cart">
+                <div class="empty-cart-icon">📦</div>
+                <h3>Tidak ada produk</h3>
+                <p>Belum ada produk dalam kategori ini.</p>
+                <a href="products.php" class="btn btn-primary">Lihat Semua Produk</a>
+            </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>S&L Bag Production</h3>
+                    <p>Produsen tas berkualitas tinggi dengan desain modern dan material premium.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Menu</h3>
+                    <ul>
+                        <li><a href="index.php">Home</a></li>
+                        <li><a href="products.php">Produk</a></li>
+                        <li><a href="contact.php">Kontak</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Kontak</h3>
+                    <p>Email: info@slbags.com</p>
+                    <p>Telp: 0857-2778-3875</p>
+                    <p>WhatsApp: 0857-2778-3875</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 S&L Bag Production. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
+<?php
+$stmt->close();
+$conn->close();
+?>

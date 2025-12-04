@@ -1,0 +1,28 @@
+<?php
+require_once 'config.php';
+require_once 'session.php';
+
+$cart_id = $_GET['id'] ?? 0;
+
+if ($cart_id > 0) {
+    $conn = getConnection();
+    $session_id = getUserSessionId();
+    
+    // Hapus item dari cart (dengan validasi session_id)
+    $query = "DELETE FROM cart WHERE id = ? AND session_id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("is", $cart_id, $session_id);
+    
+    if ($stmt->execute()) {
+        $_SESSION['cart_message'] = 'Produk berhasil dihapus dari keranjang!';
+    } else {
+        $_SESSION['cart_error'] = 'Gagal menghapus produk dari keranjang!';
+    }
+    
+    $stmt->close();
+    $conn->close();
+}
+
+header('Location: cart.php');
+exit;
+?>

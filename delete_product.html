@@ -1,0 +1,46 @@
+<?php
+require_once 'config.php';
+require_once 'session.php';
+
+requireAdmin();
+
+$product_id = $_GET['id'] ?? 0;
+
+if ($product_id > 0) {
+    $conn = getConnection();
+    
+    // Ambil info gambar untuk dihapus
+    $query = "SELECT gambar FROM products WHERE id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $product = $result->fetch_assoc();
+        
+        // Hapus produk dari database
+        $delete_query = "DELETE FROM products WHERE id = ?";
+        $delete_stmt = $conn->prepare($delete_query);
+        $delete_stmt->bind_param("i", $product_id);
+        
+        if ($delete_stmt->execute()) {
+            // Hapus file gambar jika ada
+            if ($product['gambar'] && file_exists(UPLOAD_DIR . $product['gambar'])) {
+                unlink(UPLOAD_DIR . $product['gambar']);
+            }
+            $_SESSION['admin_message'] = 'Produk berhasil dihapus!';
+        } else {
+            $_SESSION['admin_error'] = 'Gagal menghapus produk!';
+        }
+        
+        $delete_stmt->close();
+    }
+    
+    $stmt->close();
+    $conn->close();
+}
+
+header('Location: dasboard.php');
+exit;
+?>

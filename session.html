@@ -1,0 +1,29 @@
+<?php
+// Mulai session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Generate session ID untuk tracking cart
+if (!isset($_SESSION['user_session_id'])) {
+    $_SESSION['user_session_id'] = uniqid('user_', true);
+}
+
+// Fungsi untuk cek login admin
+function isAdminLoggedIn() {
+    return isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true;
+}
+
+// Fungsi untuk cek admin atau redirect
+function requireAdmin() {
+    if (!isAdminLoggedIn()) {
+        header('Location: login.php');
+        exit;
+    }
+}
+
+// Fungsi untuk get session ID
+function getUserSessionId() {
+    return $_SESSION['user_session_id'];
+}
+?>

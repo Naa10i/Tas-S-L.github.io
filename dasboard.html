@@ -1,0 +1,131 @@
+<?php
+require_once 'config.php';
+require_once 'session.php';
+
+// Cek login admin
+requireAdmin();
+
+$conn = getConnection();
+
+// Ambil statistik
+$stats = [
+    'total_products' => 0,
+    'total_orders' => 0,
+    'low_stock' => 0
+];
+
+// Total produk
+$result = $conn->query("SELECT COUNT(*) as total FROM products");
+$stats['total_products'] = $result->fetch_assoc()['total'];
+
+// Produk stok rendah (< 5)
+$result = $conn->query("SELECT COUNT(*) as total FROM products WHERE stok < 5");
+$stats['low_stock'] = $result->fetch_assoc()['total'];
+
+// Total item di cart (sebagai proxy untuk orders)
+$result = $conn->query("SELECT COUNT(DISTINCT session_id) as total FROM cart");
+$stats['total_orders'] = $result->fetch_assoc()['total'];
+
+// Ambil semua produk
+$products_query = "SELECT * FROM products ORDER BY created_at DESC";
+$products_result = $conn->query($products_query);
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - S&L Bags</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div class="container">
+            <div>
+                <h2>Dashboard Admin</h2>
+                <p>Selamat datang, <?php echo htmlspecialchars($_SESSION['admin_nama']); ?>!</p>
+            </div>
+            <div>
+                <a href="index.php" class="btn btn-secondary" style="margin-right: 1rem;">Lihat Website</a>
+                <a href="logout.php" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-content">
+        <!-- Statistics -->
+        <div class="admin-stats">
+            <div class="stat-card">
+                <h3><?php echo $stats['total_products']; ?></h3>
+                <p>Total Produk</p>
+            </div>
+            <div class="stat-card">
+                <h3><?php echo $stats['total_orders']; ?></h3>
+                <p>Keranjang Aktif</p>
+            </div>
+            <div class="stat-card">
+                <h3><?php echo $stats['low_stock']; ?></h3>
+                <p>Stok Rendah</p>
+            </div>
+        </div>
+
+        <!-- Products Management -->
+        <div class="admin-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>Manajemen Produk</h2>
+                <a href="add_product.php" class="btn btn-primary">+ Tambah Produk Baru</a>
+            </div>
+
+            <?php if ($products_result->num_rows > 0): ?>
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th>Gambar</th>
+                        <th>Nama Produk</th>
+                        <th>Kategori</th>
+                        <th>Harga</th>
+                        <th>Stok</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($product = $products_result->fetch_assoc()): ?>
+                    <tr>
+                        <td>
+                            <img src="uploads/<?php echo htmlspecialchars($product['gambar']); ?>" 
+                                 alt="<?php echo htmlspecialchars($product['nama_produk']); ?>"
+                                 onerror="this.src='https://via.placeholder.com/60'">
+                        </td>
+                        <td><?php echo htmlspecialchars($product['nama_produk']); ?></td>
+                        <td><?php echo htmlspecialchars($product['kategori']); ?></td>
+                        <td>Rp <?php echo number_format($product['harga'], 0, ',', '.'); ?></td>
+                        <td>
+                            <span style="color: <?php echo $product['stok'] < 5 ? '#ff4757' : '#27ae60'; ?>">
+                                <?php echo $product['stok']; ?>
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="edit_product.php?id=<?php echo $product['id']; ?>" class="btn btn-secondary">Edit</a>
+                                <a href="delete_product.php?id=<?php echo $product['id']; ?>" 
+                                   class="btn btn-danger"
+                                   onclick="return confirmDelete('<?php echo htmlspecialchars($product['nama_produk']); ?>')">Hapus</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+            <?php else: ?>
+            <p style="text-align: center; padding: 2rem; color: #999;">Belum ada produk. Tambahkan produk pertama Anda!</p>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+<?php
+$conn->close();
+?>

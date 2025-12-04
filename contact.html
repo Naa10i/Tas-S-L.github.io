@@ -1,0 +1,132 @@
+<?php
+require_once 'config.php';
+require_once 'session.php';
+
+$message = '';
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $name = $_POST['name'] ?? '';
+    $email = $_POST['email'] ?? '';
+    $subject = $_POST['subject'] ?? '';
+    $msg = $_POST['message'] ?? '';
+    
+    if (empty($name) || empty($email) || empty($subject) || empty($msg)) {
+        $error = 'Semua field harus diisi!';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Format email tidak valid!';
+    } else {
+        // Dalam implementasi nyata, kirim email atau simpan ke database
+        $message = 'Terima kasih! Pesan Anda telah dikirim. Kami akan segera menghubungi Anda.';
+    }
+}
+
+// Hitung jumlah item di cart
+$conn = getConnection();
+$session_id = getUserSessionId();
+$cart_query = "SELECT SUM(quantity) as total FROM cart WHERE session_id = ?";
+$stmt = $conn->prepare($cart_query);
+$stmt->bind_param("s", $session_id);
+$stmt->execute();
+$cart_result = $stmt->get_result();
+$cart_count = $cart_result->fetch_assoc()['total'] ?? 0;
+$conn->close();
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontak - S&L Bags</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>S&L Bags</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.php">Home</a></li>
+                <li><a href="products.php">Produk</a></li>
+                <li><a href="contact.php" class="active">Kontak</a></li>
+                <li><a href="cart.php" class="cart-link">
+                    🛒 Keranjang <span class="cart-badge"><?php echo $cart_count; ?></span>
+                </a></li>
+                <li><a href="login.php" class="admin-link">Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Contact Section -->
+    <section class="contact-section">
+        <div class="container">
+            <h2 class="section-title">Hubungi Kami</h2>
+            
+            <div style="max-width: 800px; margin: 0 auto 3rem; text-align: center;">
+                <p style="font-size: 1.1rem; color: #555;">
+                    Punya pertanyaan atau ingin melakukan pemesanan? Hubungi kami melalui form di bawah ini atau kontak langsung.
+                </p>
+            </div>
+
+            <?php if ($message): ?>
+                <div class="alert alert-success" style="max-width: 600px; margin: 0 auto 2rem;"><?php echo htmlspecialchars($message); ?></div>
+            <?php endif; ?>
+
+            <?php if ($error): ?>
+                <div class="alert alert-danger" style="max-width: 600px; margin: 0 auto 2rem;"><?php echo htmlspecialchars($error); ?></div>
+            <?php endif; ?>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-bottom: 3rem;">
+                <div class="feature-item">
+                    <div class="feature-icon">📧</div>
+                    <h3>Email</h3>
+                    <p>info@slbags.com</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📞</div>
+                    <h3>Telepon</h3>
+                    <p>(021) 1234-5678</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💬</div>
+                    <h3>WhatsApp</h3>
+                    <p>0812-3456-7890</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>S&L Bag Production</h3>
+                    <p>Produsen tas berkualitas tinggi dengan desain modern dan material premium.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Menu</h3>
+                    <ul>
+                        <li><a href="index.php">Home</a></li>
+                        <li><a href="products.php">Produk</a></li>
+                        <li><a href="contact.php">Kontak</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Kontak</h3>
+                    <p>Email: info@slbags.com</p>
+                    <p>Telp: 0857-2778-3875</p>
+                    <p>WhatsApp: 0857-2778-3875</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 S&L Bag Production. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
